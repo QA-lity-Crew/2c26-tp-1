@@ -12,21 +12,18 @@ const HOT_PAIR = PAIRS.find(
   (p) => p.baseCurrency === "USD" && p.counterCurrency === "ARS"
 );
 
-// Ventanas de volatilidad, en segundos desde el arranque del test.
-// IMPORTANTE: estos rangos tienen que coincidir con las fases del YAML.
+// Ventana de volatilidad, en segundos desde el arranque del test.
+// IMPORTANTE: este rango tiene que coincidir con la fase "Volatility shock" del YAML.
 // Es la forma más simple de que este processor "sepa" en qué fase está sin acoplarse
 // a la librería interna de Artillery.
-// Si se mopdifican duraciones en el YAML, hay que actualizarlas acá igual.
-const VOLATILITY_WINDOWS = [
-  { from: 80, to: 170 }, // primer shock
-  { from: 200, to: 260 }, // segundo shock
-];
+// Si se modifican duraciones en el YAML, hay que actualizar esto también.
+const VOLATILITY_WINDOW = { from: 80, to: 200 };
 
 const testStartMs = Date.now();
 
 function isInVolatilityWindow() {
   const elapsedSec = (Date.now() - testStartMs) / 1000;
-  return VOLATILITY_WINDOWS.some((w) => elapsedSec >= w.from && elapsedSec <= w.to);
+  return elapsedSec >= VOLATILITY_WINDOW.from && elapsedSec <= VOLATILITY_WINDOW.to;
 }
 
 function pickPair(volatile) {

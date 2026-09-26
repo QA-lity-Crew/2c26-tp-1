@@ -20,25 +20,16 @@ config:
       duration: 60
       arrivalRate: 50
 
-    # DEBE coincidir con VOLATILITY_WINDOWS[0] en volatility_payload_generator.js
-    - name: Volatility shock (anuncio economico)
-      duration: 90
+    # En caso de modificarse el script, también modificar VOLATILITY_WINDOW en payload_generators.js
+    - name: Volatility shock (por X anuncio economico)
+      duration: 120
       arrivalRate: 50
       rampTo: 600
 
-    - name: Partial calm
-      duration: 30
-      arrivalRate: 600
-      rampTo: 80
-
-    # DEBE coincidir con VOLATILITY_WINDOWS[1] en volatility_payload_generator.js
-    - name: Aftershock (rumor de nueva devaluacion)
-      duration: 60
-      arrivalRate: 800
-
+    # El mercado "se calma" y volvemos a 50 req/s como antes del pico de uso.
     - name: Recovery
       duration: 60
-      arrivalRate: 300
+      arrivalRate: 600
       rampTo: 50
 
     - name: Cooldown
