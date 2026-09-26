@@ -1,0 +1,49 @@
+config:
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+
+    - name: Plateau 250
+      duration: 60
+      arrivalRate: 250
+
+    - name: Plateau 350
+      duration: 60
+      arrivalRate: 350
+
+    - name: Plateau 400
+      duration: 60
+      arrivalRate: 400
+
+    - name: Plateau 450
+      duration: 60
+      arrivalRate: 450 # zona donde se observó el inicio de la degradación (450-500)
+
+    - name: Plateau 500
+      duration: 60
+      arrivalRate: 500 # confirma si la degradación observada persiste/empeora en el techo superior del rango
+
+    - name: Ramp-down
+      duration: 30
+      arrivalRate: 500
+      rampTo: 10
+
+    - name: Cooldown
+      duration: 30
+      arrivalRate: 10
+
+scenarios:
+  - name: GET Rates (/rates)
+    flow:
+      - get:
+          url: '/rates'

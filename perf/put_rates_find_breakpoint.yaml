@@ -1,0 +1,60 @@
+config:
+  processor: "./payload_generators.js"
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  pool: 200
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+
+    - name: Normal trading
+      duration: 60
+      arrivalRate: 50
+
+    # DEBE coincidir con VOLATILITY_WINDOWS[0] en volatility_payload_generator.js
+    - name: Volatility shock (anuncio economico)
+      duration: 90
+      arrivalRate: 50
+      rampTo: 600
+
+    - name: Partial calm
+      duration: 30
+      arrivalRate: 600
+      rampTo: 80
+
+    # DEBE coincidir con VOLATILITY_WINDOWS[1] en volatility_payload_generator.js
+    - name: Aftershock (rumor de nueva devaluacion)
+      duration: 60
+      arrivalRate: 800
+
+    - name: Recovery
+      duration: 60
+      arrivalRate: 300
+      rampTo: 50
+
+    - name: Cooldown
+      duration: 30
+      arrivalRate: 10
+
+scenarios:
+  - name: Update rate under volatility (PUT /rates)
+    flow:
+      - function: "generateVolatilityPayload"
+      - put:
+          url: '/rates'
+          json:
+            baseCurrency: "{{ baseCurrency }}"
+            counterCurrency: "{{ counterCurrency }}"
+            rate: "{{ rate }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
