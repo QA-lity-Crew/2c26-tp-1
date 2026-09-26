@@ -1,0 +1,51 @@
+config:
+  processor: "./payload_generators_abrupt.js"
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  pool: 600 # Lo triplicamos respecto al test donde el uso incrementa gradualmente.
+            # Así vamos a poder ver si en el test anterior nos limitabamos nosotros con el pool seleccionado.
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+
+    - name: Normal trading
+      duration: 60
+      arrivalRate: 50
+
+    # SPIKE TEST:
+    # En caso de modificarse el script, también modificar VOLATILITY_WINDOW en payload_generators_abrupt.js
+    - name: Volatility shock ABRUPTO (por X anuncio economico)
+      duration: 90
+      arrivalRate: 600
+
+    # También abrupto: caída instantánea de vuelta a 50 req/s, sin rampa de bajada.
+    - name: Recovery ABRUPTO
+      duration: 60
+      arrivalRate: 50
+
+    - name: Cooldown
+      duration: 30
+      arrivalRate: 10
+
+scenarios:
+  - name: Update rate under abrupt volatility (PUT /rates)
+    flow:
+      - function: "generateVolatilityPayload"
+      - put:
+          url: '/rates'
+          json:
+            baseCurrency: "{{ baseCurrency }}"
+            counterCurrency: "{{ counterCurrency }}"
+            rate: "{{ rate }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
