@@ -1,0 +1,76 @@
+# Escalera de carga para POST /exchange.
+# Objetivo: ver cómo evoluciona el response time al subir los req/s y en qué nivel
+# dejan de llegar 200.
+#
+# Piso de latencia: el endpoint hace 2 transfers en serie de 200-401ms cada uno, así que
+# una request sana tarda entre ~400 y ~802ms (media ~600ms). Cualquier response time
+# por encima de ~810ms ya no es el transfer simulado: es overhead del servicio (cola/saturación).
+#
+# Antes de cada corrida conviene reiniciar el servicio (los balances de las cuentas y el
+# array `log` persisten en memoria entre corridas).
+config:
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  # Concurrencia real ~ req/s x 0.6s (ej. 600 req/s ~ 360 requests abiertas a la vez),
+  # mucho mayor que en /rates o /accounts. Con pool:200 el cliente se quedaría corto
+  # antes que el servicio.
+  pool: 1000
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+
+    - name: Plateau 100
+      duration: 60
+      arrivalRate: 100
+
+    - name: Plateau 200
+      duration: 60
+      arrivalRate: 200
+
+    - name: Plateau 300
+      duration: 60
+      arrivalRate: 300
+
+    - name: Plateau 400
+      duration: 60
+      arrivalRate: 400
+
+    - name: Plateau 500
+      duration: 60
+      arrivalRate: 500
+
+    - name: Plateau 600
+      duration: 60
+      arrivalRate: 600
+
+    - name: Cooldown
+      duration: 90
+      arrivalRate: 10
+
+scenarios:
+  - name: Exchange ARS -> USD (POST /exchange)
+    flow:
+      - post:
+          url: '/exchange'
+          # Body fijo, con un par de monedas que existe en `rates`.
+          # baseAmount 100 ARS -> ~0.066 USD por request: con ~130k requests se drenan
+          # ~8.600 USD de los 60.000 de la cuenta interna, sin llegar a agotar fondos.
+          # Los ids de cuenta del cliente pueden ser cualquiera: transfer() es un mock.
+          json:
+            baseCurrency: "ARS"
+            counterCurrency: "USD"
+            baseAccountId: 1
+            counterAccountId: 2
+            baseAmount: 100
+          expect:
+            - statusCode: 200
+            - contentType: json
