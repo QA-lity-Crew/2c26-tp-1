@@ -1,0 +1,51 @@
+config:
+  environments:
+    api:
+      target: 'http://localhost:5555'
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  pool: 600 # igual que en el spike test de /rates: hace falta abrir muchas conexiones casi
+            # simultáneamente al saltar de golpe a 600 req/s, sin una rampa que las vaya creando gradual
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 5
+
+    - name: Normal trading
+      duration: 60
+      arrivalRate: 50
+
+    # SPIKE TEST: sin rampTo -> salto instantáneo de 50 a 600 req/s
+    - name: Abrupt use of updates
+      duration: 90
+      arrivalRate: 600
+
+    # Caída instantánea de vuelta a 50 req/s, sin rampa de bajada
+    - name: Recovery (also abrupt)
+      duration: 60
+      arrivalRate: 50
+
+    - name: Cooldown
+      duration: 30
+      arrivalRate: 10
+
+scenarios:
+  - name: Update balance under abrupt volatility (PUT /accounts/4/balance)
+    flow:
+      - put:
+          # Siempre sobre la última cuenta del array obtenido en el código inicial.
+          # Si tuvieramos una cantidad considerable, sería de interés comparar esta prueba
+          # para ambos casos (el primer y el último del array) pero dado que son únicamente 4 casos
+          # será despreciable la diferencia (podría ser evaluado en caso de tener un endpoint donde sean
+          # creadas las accounts).
+          url: '/accounts/4/balance'
+          json:
+            balance: 60000
+          expect:
+            - statusCode: 200
+            - contentType: json
