@@ -1,0 +1,42 @@
+# Verificación táctica mutex/locks en POST /exchange.
+# 1) Baja el saldo USD para poder evidenciar la race sin locks.
+# 2) Presión concurrente sobre el mismo par/cuentas.
+# Con mutex: saldos finales >= 0. Sin mutex: USD suele quedar negativo.
+config:
+  environments:
+    api:
+      target: "http://localhost:5555"
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  pool: 200
+
+  phases:
+    - name: Concurrent exchange pressure
+      duration: 20
+      arrivalRate: 30
+
+before:
+  flow:
+    - put:
+        url: "/accounts/2/balance"
+        json:
+          balance: 2
+    - get:
+        url: "/accounts"
+
+scenarios:
+  - name: Concurrent POST /exchange same pair
+    flow:
+      - post:
+          url: "/exchange"
+          json:
+            baseCurrency: "ARS"
+            counterCurrency: "USD"
+            baseAccountId: 11
+            counterAccountId: 10
+            # 1000 ARS * 0.00066 = 0.66 USD por exchange
+            baseAmount: 1000
