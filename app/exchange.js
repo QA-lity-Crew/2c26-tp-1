@@ -1,11 +1,14 @@
 import { nanoid } from "nanoid";
 
 import { init as stateInit, getAccounts as stateAccounts, getRates as stateRates, getLog as stateLog } from "./state.js";
-import { emitExchangeMetrics } from "./metrics.js";
 
 let accounts;
 let rates;
 let log;
+
+export const EXCHANGE_ERROR_CODES = Object.freeze({
+  RATE_CHANGED: "RATE_CHANGED",
+});
 
 //call to initialize the exchange service
 export async function init() {
@@ -56,16 +59,12 @@ export async function exchange(exchangeRequest) {
     baseAccountId: clientBaseAccountId,
     counterAccountId: clientCounterAccountId,
     baseAmount,
+    expectedRate,
   } = exchangeRequest;
 
-  //get the exchange rate
+  // Capture the server-side rate once so the whole operation uses the same
+  // value, even if rates are updated while an external transfer is pending.
   const exchangeRate = rates[baseCurrency][counterCurrency];
-  //compute the requested (counter) amount
-  const counterAmount = baseAmount * exchangeRate;
-  //find our account on the provided (base) currency
-  const baseAccount = findAccountByCurrency(baseCurrency);
-  //find our account on the counter currency
-  const counterAccount = findAccountByCurrency(counterCurrency);
 
   //construct the result object with defaults
   const exchangeResult = {
@@ -76,7 +75,25 @@ export async function exchange(exchangeRequest) {
     exchangeRate: exchangeRate,
     counterAmount: 0.0,
     obs: null,
+    error: null,
   };
+
+  // The client-provided rate is a precondition, never the authoritative rate.
+  // Reject stale quotes before performing any transfer or changing balances.
+  if (expectedRate !== exchangeRate) {
+    exchangeResult.error = EXCHANGE_ERROR_CODES.RATE_CHANGED;
+    exchangeResult.obs = "The expected exchange rate is no longer available";
+    log.push(exchangeResult);
+
+    return exchangeResult;
+  }
+
+  //compute the requested (counter) amount
+  const counterAmount = baseAmount * exchangeRate;
+  //find our account on the provided (base) currency
+  const baseAccount = findAccountByCurrency(baseCurrency);
+  //find our account on the counter currency
+  const counterAccount = findAccountByCurrency(counterCurrency);
 
   //check if we have funds on the counter currency account
   if (counterAccount.balance >= counterAmount) {
@@ -107,10 +124,6 @@ export async function exchange(exchangeRequest) {
 
   //log the transaction and return it
   log.push(exchangeResult);
-
-  if (exchangeResult.ok) {
-    emitExchangeMetrics(exchangeResult);
-  }
 
   return exchangeResult;
 }
