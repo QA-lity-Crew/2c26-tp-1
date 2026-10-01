@@ -1,4 +1,87 @@
-# Trabajo Práctico 1 de Arquitectura del Software (75.73/TB034) del 2do cuatrimestre de 2026
+# TP1: Auditoría Arquitectónica y Tácticas de Calidad - arVault
+
+**Materia:** Arquitectura del Software (75.73 / TB034)  
+**Facultad:** Facultad de Ingeniería de la Universidad de Buenos Aires (FIUBA)  
+**Cuatrimestre:** 2do Cuatrimestre de 2026  
+**Grupo:** QA-lity Crew  
+
+### Integrantes
+| Apellido y Nombres | Padrón | Email |
+|---|---|---|
+| Giménez, Tomás | 110166 | togimenez@fi.uba.ar |
+| Corn, Franco | 109025 | fcorn@fi.uba.ar |
+| Ruiz Sugliani, Santiago Nahuel | 106768 | sruizs@fi.uba.ar |
+| Zajic, Gisela Daiana | 108735 | gzajic@fi.uba.ar |
+
+---
+
+## 📄 Informe Final
+El informe completo de evaluación de arquitectura, pruebas de carga y tácticas implementadas se encuentra disponible en formato PDF en:  
+👉 [**doc/Informe TP1 - Arquitectura de Software.pdf**](./doc/Informe%20TP1%20-%20Arquitectura%20de%20Software.pdf)
+
+---
+
+## 📌 Resumen de Tácticas Arquitectónicas Implementadas
+
+1. **Atomicidad y Control de Concurrencia (Mutex Locks en Memoria):**
+   - Resolución de *race conditions* y saldos negativos bajo ráfagas concurrentes en `POST /exchange`.
+2. **Rate Limiting Perimetral (Nginx `limit_req`):**
+   - Protección contra ráfagas no deseadas y mitigación de ataques DoS, retornando HTTP 429 estandarizado.
+3. **Escalamiento Horizontal y Persistencia Distribuida (Redis + Lua Scripts):**
+   - Externalización de estado y reserva atómica de fondos (`reserveFunds.lua`) permitiendo escalar el servicio web a 3 réplicas sin divergencia de datos.
+4. **Validación Estricta y Seguridad de Contratos (`expectedRate`):**
+   - Prevención de desincronización por *slippage* en tasas de cambio y restricción de conexiones TCP perimetrales.
+5. **Métricas de Negocio en Tiempo Real (StatsD + Graphite + Grafana):**
+   - Monitoreo en vivo de *Gross Traded Volume* (GTV) y *Net Vault Position* por divisa (ARS, USD, EUR, BRL).
+
+---
+
+## 🚀 Guía de Ejecución y Pruebas
+
+### 1. Requisitos previos
+- Docker & Docker Compose
+- Node.js (v18+)
+
+### 2. Levantar el stack completo
+Para iniciar todos los servicios (Nginx, API de arVault, StatsD/Graphite, cAdvisor y Grafana):
+
+```sh
+docker-compose up -d --build
+```
+
+- **API a través del Reverse Proxy:** `http://localhost:8080`
+- **Dashboard de Grafana:** `http://localhost:3000` (Credenciales por defecto: `admin` / `admin`)
+
+### 3. Pruebas de Carga y Rendimiento (Artillery)
+Los escenarios de prueba se encuentran en el directorio `perf/`. Para ejecutarlos:
+
+```sh
+./run-scenario.sh <nombre_del_escenario> <entorno>
+```
+
+*Ejemplo:*
+```sh
+./run-scenario.sh exchange-all-tactics-load local
+```
+
+---
+
+## 📂 Estructura del Repositorio
+
+```text
+├── app/                     # Código fuente de la API arVault (Node.js/Express)
+├── doc/                     # Informe final en PDF y colección de Postman
+├── perf/                    # Escenarios de Artillery y configuración de Grafana
+├── nginx_reverse_proxy.conf # Configuración perimetral de Nginx y Rate Limiting
+├── docker-compose.yml       # Orquestación de contenedores y límites de recursos
+└── README.md                # Este archivo
+```
+
+---
+
+# Enunciado Original de la Cátedra
+
+## Trabajo Práctico 1 de Arquitectura del Software (75.73/TB034) del 2do cuatrimestre de 2026
 
 > **La fecha de entrega para el informe y el código es el jueves 01/10** :bangbang:
 
@@ -47,7 +130,7 @@ El informe debe estar correctamente redactado, asumiendo que quienes vayan a lee
 El fundador de arVault tiene un par de pedidos adicionales al análisis:
 
 1. **[OBLIGATORIO]** Enterado de que se van a utilizar métricas para analizar el servicio, solicita que se agreguen métricas que muestren el **volumen** operado en cada moneda (compras y ventas sumadas por moneda), como así también el **neto** (compras suman y ventas restan), ambos a medida que transcurre el tiempo. Estas métricas deberían aparecer en el dashboard de alguno de los casos estudiados.
-2. **[OPCIONAL]** Más allá de las tácticas que prueben para favorecer distintos QA, él les comenta que, según le parece, el servicio funcionaría mejor si la información que se almacena actualmente en archivos `.json` fuera almacenada en un base de datos externa (propone usar [Redis](https://redis.io/es/), pero pueden utilizar cualquier otro motor que prefieran). No sabe a cuáles QA impactaría (recién está leyendo sobre el tema), pero está dispuesto a dar un bonus para que este cambio forme parte del análisis e implementación y se discutan en el informe los pros y contras. Este pedido es **opcional** en esta entrega, recomendamos hacerlo si ven que el resto del TP está hecho de manera coEn los atributos mensurables, obtener métricas y mostrar evidencia que permita constatar que las modificaciones impactaron positivamente. Para los demás atributos, presentar nsistente y balanceada. Tengan en cuenta que en el TP 2 va a aparecer de manera obligatoria. Si lo prueban ahora, ganan tiempo para el siguiente TP.
+2. **[OPCIONAL]** Más allá de las tácticas que prueben para favorecer distintos QA, él les comenta que, según le parece, el servicio funcionaría mejor si la información que se almacena actualmente en archivos `.json` fuera almacenada en un base de datos externa (propone usar [Redis](https://redis.io/es/), pero pueden utilizar cualquier otro motor que prefieran). No sabe a cuáles QA impactaría (recién está leyendo sobre el tema), pero está dispuesto a dar un bonus para que este cambio forme parte del análisis e implementación y se discutan en el informe los pros y contras. Este pedido es **opcional** en esta entrega, recomendamos hacerlo si ven que el resto del TP está hecho de manera consistente y balanceada. Tengan en cuenta que en el TP 2 va a aparecer de manera obligatoria. Si lo prueban ahora, ganan tiempo para el siguiente TP.
 
 ## Desarrollo
 
@@ -89,48 +172,18 @@ Hay muchos tipos de escenarios de carga y pruebas de performance en general. Pue
 
 ## Links útiles
 
-- Node.js:
-  - https://nodejs.org/
-  - https://github.com/creationix/nvm
-- Express:
-  - https://expressjs.com/en/starter/hello-world.html
-- Nginx:
-  - https://nginx.org/
-- Redis:
-  - https://redis.io/
-  - https://www.npmjs.com/package/redis
-- Docker:
-  - https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-engine.html
-  - https://www.docker.com/
-- Docker-compose:
-  - https://docs.docker.com/compose/
-- StatsD:
-  - https://github.com/etsy/statsd
-  - https://github.com/etsy/statsd/blob/master/docs/graphite.md
-- Graphite:
-  - https://graphiteapp.org/
-  - https://graphite.readthedocs.io/en/latest/
-- Grafana:
-  - https://grafana.com/
-  - https://docs.grafana.org/guides/getting_started/
-- Imagen usada (statsd + graphite):
-  - https://hub.docker.com/r/graphiteapp/graphite-statsd/
-  - https://github.com/graphite-project/docker-graphite-statsd
-- Gotchas:
-  - http://dieter.plaetinck.be/post/25-graphite-grafana-statsd-gotchas/
-- Artillery:
-  - https://artillery.io/docs/
-  - https://www.npmjs.com/package/artillery
-  - https://www.npmjs.com/package/artillery-plugin-statsd
-- JMeter:
-  - https://jmeter.apache.org/
-- Artículos sobre generación de carga:
-  - https://queue-it.com/blog/load-vs-stress-testing/
-  - https://www.artillery.io/blog/load-testing-workload-models
+- Node.js: https://nodejs.org/
+- Express: https://expressjs.com/
+- Nginx: https://nginx.org/
+- Redis: https://redis.io/
+- Docker: https://www.docker.com/
+- Docker Compose: https://docs.docker.com/compose/
+- StatsD: https://github.com/etsy/statsd
+- Graphite: https://graphiteapp.org/
+- Grafana: https://grafana.com/
+- Artillery: https://artillery.io/docs/
 
-## Pequeño cheatsheet de docker
-
-Es posible que necesiten ejecutar los comandos con `sudo`, según el sistema que usen y cómo lo hayan instalado.
+## Pequeño cheatsheet de Docker
 
 ```sh
 # Ver qué containers existen
@@ -140,7 +193,6 @@ docker ps [-a]
 docker images
 
 # Ver uso de recursos de containers (como "top" en linux)
-# Ejemplo con formato específico: docker stats --format '{{.Name}}\t{{.ID}}\t{{.CPUPerc}}\t{{.MemUsage}}'
 docker stats [--format <format_string>]
 
 # Descargar una imagen
@@ -151,70 +203,20 @@ docker rm <container_id> [-f]
 
 # Eliminar una imagen
 docker rmi <image_id> [-f]
-
-# Eliminar imágenes "colgadas" (dangling)
-docker rmi $(docker images -q -f dangling=true)
-
-# Versión instalada
-docker version
 ```
 
-## Pequeño cheatsheet de docker-compose
-
-Todos los siguientes comandos deben ejecutarse desde el directorio en donde está el archivo `docker-compose.yml` del proyecto.
-
-Es posible que necesiten ejecutar los comandos con `sudo`, según el sistema que usen y cómo lo hayan instalado.
+## Pequeño cheatsheet de Docker Compose
 
 ```sh
-# ALIAS para escribir menos
-alias docc='docker-compose'
+# Levantar servicios en background
+docker-compose up -d
 
-# Ayuda general
-docc --help
-
-# Ayuda genral para cualquier comando
-docc [COMMAND] --help
-
-# Levantar servicios.
-# Sugerencia: Usar la opción -d para levantar en background, y poder seguir usando la terminal
-# También sirve para escalar horizontalmente un servicio que ya se esté ejecutando [buscar opción --scale].
-# Si no se especifica al menos un servicio, se levantan todos
-docc up [options] [SERVICE...]
-
-# Ver logs de un servicio ejecutándose en background
-docc logs [options] [SERVICE]
+# Ver logs de los servicios
+docker-compose logs -f
 
 # Listar containers y sus estados
-docc ps
+docker-compose ps
 
-# Restartear servicios
-# Si no se indica al menos un servicio, se restartean todos
-docc restart [SERVICE...]
-
-# Frenar servicios corriendo en background (con la opción --detach del `up`)
-# Si no se lista ningún servicio, se frenan todos.
-# Esto solo frena servicio, no borra el container ni los datos que hayan en el mismo
-docc stop [SERVICE...]
-
-# Frenar containers y borrar tanto los containers como las imágenes y los volúmenes de almacenamiento
-# (se pierden todos los datos que hubiera en el container).
-# Esto aplica a TODOS los levantados con `up`, no filtra por servicio
-docc down
-
-# Levantar un nuevo container de un servicio y ejecutar un comando adentro
-# (util para tener por ejemplo una terminal dentro de un container e inspeccionarlo o hacer pruebas manuales).
-# Como es siempre sobre un container nuevo, lo que ven es el resultado de su docker-compose.yml y sus dockerfiles
-# Ejemplo: docc run graphite bash
-docc run SERVICE COMMAND
-
-# Correr un comando en un container que ya existe y ya está corriendo.
-# Parecido a `run` pero sobre un container en ejecución.
-# Útil para alterar o inspeccionar algo que se está ejecutando.
-# Lo que ven adentro puede no ser el resultado directo del docker-compose.yml + dockerfiles, así que mucho cuidado
-# si van a modificar sus containers así, porque puede ser difícil de reproducir luego.
-# Ejemplo: docc exec graphite bash
-docc exec SERVICE COMMAND
-
-# Versión instalada
-docc version
+# Frenar y remover containers, redes y volúmenes
+docker-compose down
 ```
