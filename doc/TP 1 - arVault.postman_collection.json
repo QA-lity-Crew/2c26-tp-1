@@ -32,7 +32,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"baseCurrency\": \"USD\",\n    \"counterCurrency\": \"ARS\",\n    \"baseAmount\": 100.0,\n    \"baseAccountId\": 11,\n    \"counterAccountId\": 10\n}",
+					"raw": "{\n    \"baseCurrency\": \"USD\",\n    \"counterCurrency\": \"ARS\",\n    \"baseAmount\": 100.0,\n    \"baseAccountId\": 11,\n    \"counterAccountId\": 10,\n    \"expectedRate\": 1064\n}",
 					"options": {
 						"raw": {
 							"language": "json"

@@ -100,7 +100,8 @@ Ejecuta una operación de cambio de monedas
         "counterCurrency": "ARS",
         "baseAmount": 100.0,
         "baseAccountId": 11,
-        "counterAccountId": 10
+        "counterAccountId": 10,
+        "expectedRate": 1064
     }
 
 - `baseCurrency`: Moneda origen de la transacción
@@ -108,8 +109,21 @@ Ejecuta una operación de cambio de monedas
 - `baseAmount`: Importe en moneda origen a cambiar
 - `baseAccountId`: ID de la cuenta origen para la operación de cambio (cuenta del cliente)
 - `counterAccountId`: ID de la cuenta destino para la operación de cambio (cuenta del cliente)
+- `expectedRate`: Cotización obtenida previamente de `GET /rates` y confirmada por el cliente. Funciona como precondición; la cotización autoritativa sigue siendo la almacenada en el servidor.
 
 Este endpoint busca en las cuentas propias las que correspondan a las monedas. Se valida que haya saldo suficiente para efectuar la operación **en la cuenta propia**. **No** se valida que haya saldo en la cuenta del cliente, se espera que lo haga la UI y que no permita la operación.
+
+Antes de iniciar transferencias, el servidor compara `expectedRate` con la cotización vigente. El cliente debe reenviar sin modificar el valor recibido de `GET /rates`. Si la cotización cambió, la operación no produce efectos y responde `409 Conflict`:
+
+    {
+        "ok": false,
+        "error": "RATE_CHANGED",
+        "exchangeRate": 1065,
+        "counterAmount": 0,
+        "obs": "The expected exchange rate is no longer available"
+    }
+
+El cliente debe obtener la nueva cotización y solicitar una nueva confirmación al usuario. Un body incompleto o un `expectedRate` que no sea un número positivo responde `400 Bad Request`.
 
 Todas las operaciones se registran en un log. Ver más abajo.
 
