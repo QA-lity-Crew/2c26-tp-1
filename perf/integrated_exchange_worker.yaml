@@ -1,0 +1,40 @@
+config:
+  processor: "./integrated_payloads.js"
+  environments:
+    docker:
+      target: "http://nginx"
+      plugins:
+        statsd:
+          host: graphite
+          port: 8125
+          prefix: "artillery-integrated-exchange"
+
+  pool: 50
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 1
+    - name: Normal load
+      duration: 45
+      arrivalRate: 5
+    - name: High load
+      duration: 60
+      arrivalRate: 10
+    - name: Peak load
+      duration: 60
+      arrivalRate: 20
+    - name: Recovery
+      duration: 30
+      arrivalRate: 2
+
+scenarios:
+  - name: Exchange from 400 simulated clients
+    flow:
+      - function: "generateExchangePayload"
+      - post:
+          url: "/exchange"
+          beforeRequest: "setExchangeBody"
+          expect:
+            - statusCode: 200
+            - contentType: json

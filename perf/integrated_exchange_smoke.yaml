@@ -1,0 +1,27 @@
+config:
+  processor: "./integrated_payloads.js"
+  environments:
+    api:
+      target: "http://localhost:5555"
+    docker:
+      target: "http://nginx"
+  phases:
+    - name: Smoke
+      duration: 2
+      arrivalRate: 2
+
+scenarios:
+  - name: Exchange smoke test
+    flow:
+      - function: "generateExchangePayload"
+      - get:
+          url: "/rates"
+          afterResponse: "captureExpectedRate"
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/exchange"
+          beforeRequest: "setExchangeBody"
+          expect:
+            - statusCode: 200
+            - contentType: json

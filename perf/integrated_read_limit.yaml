@@ -1,0 +1,44 @@
+config:
+  environments:
+    api:
+      target: "http://localhost:5555"
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-integrated-read"
+    docker:
+      target: "http://nginx"
+      plugins:
+        statsd:
+          host: graphite
+          port: 8125
+          prefix: "artillery-integrated-read"
+
+  pool: 5000
+
+  phases:
+    - name: Warm-up
+      duration: 15
+      arrivalRate: 100
+    - name: 1000 requests per second
+      duration: 20
+      arrivalRate: 1000
+    - name: 2500 requests per second
+      duration: 20
+      arrivalRate: 2500
+    - name: Rate limit boundary
+      duration: 20
+      arrivalRate: 3000
+    - name: Above rate limit
+      duration: 20
+      arrivalRate: 3500
+    - name: Recovery
+      duration: 20
+      arrivalRate: 100
+
+scenarios:
+  - name: GET rates around the configured limit
+    flow:
+      - get:
+          url: "/rates"
