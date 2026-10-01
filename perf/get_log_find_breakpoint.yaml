@@ -9,56 +9,70 @@ config:
         statsd:
           host: localhost
           port: 8125
-          prefix: "artillery-accounts"
+          prefix: "artillery-log-normal"
     docker-normal:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-normal"
+          prefix: "artillery-log-normal"
+    docker-100:
+      target: 'http://nginx'
+      plugins:
+        statsd:
+          host: graphite
+          port: 8125
+          prefix: "artillery-log-100"
+    docker-500:
+      target: 'http://nginx'
+      plugins:
+        statsd:
+          host: graphite
+          port: 8125
+          prefix: "artillery-log-500"
     docker-1k:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-1k"
+          prefix: "artillery-log-1k"
+    docker-2k:
+      target: 'http://nginx'
+      plugins:
+        statsd:
+          host: graphite
+          port: 8125
+          prefix: "artillery-log-2k"
     docker-5k:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-5k"
-    docker-10k:
-      target: 'http://nginx'
-      plugins:
-        statsd:
-          host: graphite
-          port: 8125
-          prefix: "artillery-accounts-10k"
+          prefix: "artillery-log-5k"
     docker-20k:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-20k"
+          prefix: "artillery-log-20k"
     docker-40k:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-40k"
+          prefix: "artillery-log-40k"
     docker-100k:
       target: 'http://nginx'
       plugins:
         statsd:
           host: graphite
           port: 8125
-          prefix: "artillery-accounts-100k"
+          prefix: "artillery-log-100k"
 
   phases:
     - name: Warm-up
@@ -79,11 +93,11 @@ config:
 
     - name: Plateau 450
       duration: 60
-      arrivalRate: 450 # zona donde se observó el inicio de la degradación (450-500)
+      arrivalRate: 450
 
     - name: Plateau 500
       duration: 60
-      arrivalRate: 500 # confirma si la degradación observada persiste/empeora en el techo superior del rango
+      arrivalRate: 500
 
     - name: Ramp-down
       duration: 30
@@ -95,7 +109,7 @@ config:
       arrivalRate: 10
 
 scenarios:
-  - name: GET Accounts (/accounts)
+  - name: GET Log (/log)
     flow:
       - get:
-          url: '/accounts'
+          url: '/log'
