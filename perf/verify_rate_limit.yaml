@@ -1,0 +1,37 @@
+# Verificación táctica rate limiting (Nginx limit_req @ 300r/s, burst 50).
+# Objetivo: con ~500 req/s deberían aparecer HTTP 429 y reducirse ETIMEDOUT
+# respecto del caso base sin rate limit.
+config:
+  environments:
+    api:
+      target: "http://localhost:5555"
+      plugins:
+        statsd:
+          host: localhost
+          port: 8125
+          prefix: "artillery-api"
+
+  pool: 600
+
+  phases:
+    - name: Warm-up
+      duration: 20
+      arrivalRate: 50
+
+    - name: Below limit (~250 r/s)
+      duration: 45
+      arrivalRate: 250
+
+    - name: Above limit (~500 r/s)
+      duration: 90
+      arrivalRate: 500
+
+    - name: Cooldown
+      duration: 30
+      arrivalRate: 50
+
+scenarios:
+  - name: GET /rates under rate limit
+    flow:
+      - get:
+          url: "/rates"
