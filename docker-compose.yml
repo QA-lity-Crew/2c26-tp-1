@@ -3,6 +3,9 @@ services:
       build: ./app
       cpus: "1.0"
       mem_limit: 512m
+      environment:
+        PERF_ACCOUNT_COUNT: ${PERF_ACCOUNT_COUNT:-0}
+        PERF_LOG_COUNT: ${PERF_LOG_COUNT:-0}
 
     nginx:
         image: nginx:1.29.8
@@ -44,6 +47,33 @@ services:
             - "/sys:/sys:ro"
             - "/var/lib/docker/:/var/lib/docker:ro"
 
+    resource-metrics:
+        image: node:24
+        command: ["node", "/opt/resource_metrics.cjs"]
+        environment:
+            COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-exchange}
+            STATSD_HOST: graphite
+        volumes:
+            - ./perf/resource_metrics.cjs:/opt/resource_metrics.cjs:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        depends_on:
+            - graphite
+        restart: unless-stopped
+
+    loadgen:
+        image: node:22-alpine
+        profiles: ["load"]
+        working_dir: /perf
+        volumes:
+            - ./perf:/perf
+            - loadgen_node_modules:/perf/node_modules
+        command: ["sh", "-c", "npm ci && ./run-scenario.sh get_rates_find_breakpoint docker"]
+        depends_on:
+            - nginx
+            - graphite
+
 volumes:
     grafana_config:
+        driver: local
+    loadgen_node_modules:
         driver: local
