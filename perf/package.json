@@ -6,10 +6,16 @@
   "scripts": {
     "artillery": "artillery",
     "api": "artillery run rates.yaml -e api",
-    "scenario": "./run-scenario.sh"
+    "scenario": "./run-scenario.sh",
+    "test:rate-limit": "artillery run -e api --output ../docs/evidence/raw/read-limit.json integrated_read_limit.yaml",
+    "test:exchange": "artillery run -e api --output ../docs/evidence/raw/exchange-local.json integrated_exchange_load.yaml",
+    "test:exchange:smoke": "artillery run -e api --output ../docs/evidence/raw/exchange-smoke.json integrated_exchange_smoke.yaml"
   },
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "dependencies": {
     "artillery": "2.0.22",
     "artillery-plugin-statsd": "^2.2.1"

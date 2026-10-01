@@ -10,47 +10,9 @@ El servicio tiene un Dockerfile para poder armar una imagen de Docker y levantar
 
 ### Almacenamiento
 
-El storage de cuentas, tasas y el log se mantiene, por ahora, en unos archivos JSON. Tienen que existir 3 archivos en el directorio `./state`:
+Las cuentas internas, las tasas y el log se guardan en Redis. Al iniciar el entorno por primera vez, una de las réplicas carga los valores iniciales de `state/accounts.json` y `state/rates.json`. Las demás esperan a que termine esa carga para no pisar el estado compartido.
 
-`accounts.json`
-
-Tiene un array con las cuentas de la empresa, con la moneda y el saldo actual. Ejemplo de una cuenta:
-
-    {
-        "id": 1,
-        "currency": "ARS",
-        "balance": 2000000
-    }
-
-`rates.json`
-
-Tiene un objeto con las tasas de cambio. Ejemplo de una tasa:
-
-    "ARS": {
-        "BRL": 0.00553,
-        "EUR": 0.00091,
-        "USD": 0.00094
-    }
-
-`log.json`
-
-Tiene un array con el log de transacciones del sistema. Ejemplo de una entrada de log:
-
-    {
-        "id": "Uml8yqzZ4Mjgk2tKuN6mL",
-        "ts": "2025-02-10T00:10:25.202Z",
-        "ok": true,
-        "request": {
-        "baseCurrency": "USD",
-        "counterCurrency": "ARS",
-        "baseAmount": 100,
-        "baseAccountId": 11,
-        "counterAccountId": 10
-        },
-        "exchangeRate": 1064,
-        "counterAmount": 106400,
-        "obs": null
-    }
+La validación y el descuento de fondos se ejecutan juntos mediante un script Lua de Redis. Así, dos réplicas no pueden aprobar operaciones concurrentes usando el mismo saldo disponible.
 
 ## Endpoints
 
@@ -100,7 +62,8 @@ Ejecuta una operación de cambio de monedas
         "counterCurrency": "ARS",
         "baseAmount": 100.0,
         "baseAccountId": 11,
-        "counterAccountId": 10
+        "counterAccountId": 10,
+        "expectedRate": 1064
     }
 
 - `baseCurrency`: Moneda origen de la transacción
@@ -108,19 +71,31 @@ Ejecuta una operación de cambio de monedas
 - `baseAmount`: Importe en moneda origen a cambiar
 - `baseAccountId`: ID de la cuenta origen para la operación de cambio (cuenta del cliente)
 - `counterAccountId`: ID de la cuenta destino para la operación de cambio (cuenta del cliente)
+- `expectedRate`: Cotización obtenida previamente de `GET /rates` y confirmada por el cliente. Funciona como precondición; la cotización autoritativa sigue siendo la almacenada en el servidor.
 
 Este endpoint busca en las cuentas propias las que correspondan a las monedas. Se valida que haya saldo suficiente para efectuar la operación **en la cuenta propia**. **No** se valida que haya saldo en la cuenta del cliente, se espera que lo haga la UI y que no permita la operación.
+
+Antes de iniciar transferencias, el servidor compara `expectedRate` con la cotización vigente. El cliente debe reenviar sin modificar el valor recibido de `GET /rates`. Si la cotización cambió, la operación no produce efectos y responde `409 Conflict`:
+
+    {
+        "ok": false,
+        "error": "RATE_CHANGED",
+        "exchangeRate": 1065,
+        "counterAmount": 0,
+        "obs": "The expected exchange rate is no longer available"
+    }
+
+El cliente debe obtener la nueva cotización y solicitar una nueva confirmación al usuario. Un body incompleto o un `expectedRate` que no sea un número positivo responde `400 Bad Request`.
 
 Todas las operaciones se registran en un log. Ver más abajo.
 
 ### Logs
 
-`GET /logs`
+`GET /log`
 
-Devuelve el log de operaciones. Este log se persiste cada 5 segundos.
+Devuelve el log de operaciones almacenado en Redis.
 
 ## TODO
 
-- No me gusta guardar todo en archivos .json, por ahora va, pero tendría que hacer algo distinto.
 - No valida casi nada, solo que los parámetros de los JSON tengan algún valor :collision:
 - Ver el tema del manejo de las cuentas, debería ser responsabilidad de otro servicio.
