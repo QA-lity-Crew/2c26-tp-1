@@ -8,6 +8,7 @@ import {
   setRate,
   getLog,
   exchange,
+  EXCHANGE_ERROR_CODES,
 } from "./new_exchange.js";
 
 await exchangeInit();
@@ -61,6 +62,7 @@ app.post("/exchange", async (req, res) => {
     baseAccountId,
     counterAccountId,
     baseAmount,
+    expectedRate,
   } = req.body;
 
   if (
@@ -68,7 +70,9 @@ app.post("/exchange", async (req, res) => {
     !counterCurrency ||
     !baseAccountId ||
     !counterAccountId ||
-    !baseAmount
+    !baseAmount ||
+    !Number.isFinite(expectedRate) ||
+    expectedRate <= 0
   ) {
     return res.status(400).json({ error: "Malformed request" });
   }
@@ -78,6 +82,8 @@ app.post("/exchange", async (req, res) => {
 
   if (exchangeResult.ok) {
     res.status(200).json(exchangeResult);
+  } else if (exchangeResult.error === EXCHANGE_ERROR_CODES.RATE_CHANGED) {
+    res.status(409).json(exchangeResult);
   } else {
     res.status(500).json(exchangeResult);
   }

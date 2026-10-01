@@ -8,6 +8,10 @@ export const getRates = state.getRates;
 export const getLog = state.getLog;
 export const setAccountBalance = state.setAccountBalance;
 
+export const EXCHANGE_ERROR_CODES = Object.freeze({
+  RATE_CHANGED: "RATE_CHANGED",
+});
+
 export async function setRate({ baseCurrency, counterCurrency, rate }) {
   await state.setRate(baseCurrency, counterCurrency, rate);
 }
@@ -19,10 +23,10 @@ export async function exchange(exchangeRequest) {
     baseAccountId: clientBaseAccountId,
     counterAccountId: clientCounterAccountId,
     baseAmount,
+    expectedRate,
   } = exchangeRequest;
 
   const exchangeRate = await state.getRate(baseCurrency, counterCurrency);
-  const counterAmount = baseAmount * exchangeRate;
   const baseAccountId = await state.getAccountIdByCurrency(baseCurrency);
   const counterAccountId = await state.getAccountIdByCurrency(counterCurrency);
 
@@ -34,7 +38,17 @@ export async function exchange(exchangeRequest) {
     exchangeRate,
     counterAmount: 0.0,
     obs: null,
+    error: null,
   };
+
+  if (expectedRate !== exchangeRate) {
+    exchangeResult.error = EXCHANGE_ERROR_CODES.RATE_CHANGED;
+    exchangeResult.obs = "The expected exchange rate is no longer available";
+    await state.appendLog(exchangeResult);
+    return exchangeResult;
+  }
+
+  const counterAmount = baseAmount * exchangeRate;
 
   // 1) Reservar fondos en nuestra cuenta de contramoneda (chequeo + descuento atómico)
   if (await state.reserveFunds(counterAccountId, counterAmount)) {
