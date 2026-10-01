@@ -81,7 +81,7 @@ Los escenarios de prueba se encuentran en el directorio `perf/`. Para ejecutarlo
 
 # Enunciado Original de la Cátedra
 
-## Trabajo Práctico 1 de Arquitectura del Software (75.73/TB034) del 2do cuatrimestre de 2026
+# Trabajo Práctico 1 de Arquitectura del Software (75.73/TB034) del 2do cuatrimestre de 2026
 
 > **La fecha de entrega para el informe y el código es el jueves 01/10** :bangbang:
 
@@ -172,18 +172,48 @@ Hay muchos tipos de escenarios de carga y pruebas de performance en general. Pue
 
 ## Links útiles
 
-- Node.js: https://nodejs.org/
-- Express: https://expressjs.com/
-- Nginx: https://nginx.org/
-- Redis: https://redis.io/
-- Docker: https://www.docker.com/
-- Docker Compose: https://docs.docker.com/compose/
-- StatsD: https://github.com/etsy/statsd
-- Graphite: https://graphiteapp.org/
-- Grafana: https://grafana.com/
-- Artillery: https://artillery.io/docs/
+- Node.js:
+  - https://nodejs.org/
+  - https://github.com/creationix/nvm
+- Express:
+  - https://expressjs.com/en/starter/hello-world.html
+- Nginx:
+  - https://nginx.org/
+- Redis:
+  - https://redis.io/
+  - https://www.npmjs.com/package/redis
+- Docker:
+  - https://docker-k8s-lab.readthedocs.io/en/latest/docker/docker-engine.html
+  - https://www.docker.com/
+- Docker-compose:
+  - https://docs.docker.com/compose/
+- StatsD:
+  - https://github.com/etsy/statsd
+  - https://github.com/etsy/statsd/blob/master/docs/graphite.md
+- Graphite:
+  - https://graphiteapp.org/
+  - https://graphite.readthedocs.io/en/latest/
+- Grafana:
+  - https://grafana.com/
+  - https://docs.grafana.org/guides/getting_started/
+- Imagen usada (statsd + graphite):
+  - https://hub.docker.com/r/graphiteapp/graphite-statsd/
+  - https://github.com/graphite-project/docker-graphite-statsd
+- Gotchas:
+  - http://dieter.plaetinck.be/post/25-graphite-grafana-statsd-gotchas/
+- Artillery:
+  - https://artillery.io/docs/
+  - https://www.npmjs.com/package/artillery
+  - https://www.npmjs.com/package/artillery-plugin-statsd
+- JMeter:
+  - https://jmeter.apache.org/
+- Artículos sobre generación de carga:
+  - https://queue-it.com/blog/load-vs-stress-testing/
+  - https://www.artillery.io/blog/load-testing-workload-models
 
-## Pequeño cheatsheet de Docker
+## Pequeño cheatsheet de docker
+
+Es posible que necesiten ejecutar los comandos con `sudo`, según el sistema que usen y cómo lo hayan instalado.
 
 ```sh
 # Ver qué containers existen
@@ -193,6 +223,7 @@ docker ps [-a]
 docker images
 
 # Ver uso de recursos de containers (como "top" en linux)
+# Ejemplo con formato específico: docker stats --format '{{.Name}}\t{{.ID}}\t{{.CPUPerc}}\t{{.MemUsage}}'
 docker stats [--format <format_string>]
 
 # Descargar una imagen
@@ -203,20 +234,70 @@ docker rm <container_id> [-f]
 
 # Eliminar una imagen
 docker rmi <image_id> [-f]
+
+# Eliminar imágenes "colgadas" (dangling)
+docker rmi $(docker images -q -f dangling=true)
+
+# Versión instalada
+docker version
 ```
 
-## Pequeño cheatsheet de Docker Compose
+## Pequeño cheatsheet de docker-compose
+
+Todos los siguientes comandos deben ejecutarse desde el directorio en donde está el archivo `docker-compose.yml` del proyecto.
+
+Es posible que necesiten ejecutar los comandos con `sudo`, según el sistema que usen y cómo lo hayan instalado.
 
 ```sh
-# Levantar servicios en background
-docker-compose up -d
+# ALIAS para escribir menos
+alias docc='docker-compose'
 
-# Ver logs de los servicios
-docker-compose logs -f
+# Ayuda general
+docc --help
+
+# Ayuda genral para cualquier comando
+docc [COMMAND] --help
+
+# Levantar servicios.
+# Sugerencia: Usar la opción -d para levantar en background, y poder seguir usando la terminal
+# También sirve para escalar horizontalmente un servicio que ya se esté ejecutando [buscar opción --scale].
+# Si no se especifica al menos un servicio, se levantan todos
+docc up [options] [SERVICE...]
+
+# Ver logs de un servicio ejecutándose en background
+docc logs [options] [SERVICE]
 
 # Listar containers y sus estados
-docker-compose ps
+docc ps
 
-# Frenar y remover containers, redes y volúmenes
-docker-compose down
+# Restartear servicios
+# Si no se indica al menos un servicio, se restartean todos
+docc restart [SERVICE...]
+
+# Frenar servicios corriendo en background (con la opción --detach del `up`)
+# Si no se lista ningún servicio, se frenan todos.
+# Esto solo frena servicio, no borra el container ni los datos que hayan en el mismo
+docc stop [SERVICE...]
+
+# Frenar containers y borrar tanto los containers como las imágenes y los volúmenes de almacenamiento
+# (se pierden todos los datos que hubiera en el container).
+# Esto aplica a TODOS los levantados con `up`, no filtra por servicio
+docc down
+
+# Levantar un nuevo container de un servicio y ejecutar un comando adentro
+# (util para tener por ejemplo una terminal dentro de un container e inspeccionarlo o hacer pruebas manuales).
+# Como es siempre sobre un container nuevo, lo que ven es el resultado de su docker-compose.yml y sus dockerfiles
+# Ejemplo: docc run graphite bash
+docc run SERVICE COMMAND
+
+# Correr un comando en un container que ya existe y ya está corriendo.
+# Parecido a `run` pero sobre un container en ejecución.
+# Útil para alterar o inspeccionar algo que se está ejecutando.
+# Lo que ven adentro puede no ser el resultado directo del docker-compose.yml + dockerfiles, así que mucho cuidado
+# si van a modificar sus containers así, porque puede ser difícil de reproducir luego.
+# Ejemplo: docc exec graphite bash
+docc exec SERVICE COMMAND
+
+# Versión instalada
+docc version
 ```
