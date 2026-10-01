@@ -18,9 +18,50 @@ export async function init() {
   rates = await load(RATES);
   log = await load(LOG);
 
+  seedPerformanceData();
+
   scheduleSave(accounts, ACCOUNTS, 1000);
   scheduleSave(rates, RATES, 5000);
   scheduleSave(log, LOG, 1000);
+}
+
+function seedPerformanceData() {
+  const accountCount = parsePerformanceCount("PERF_ACCOUNT_COUNT");
+  const logCount = parsePerformanceCount("PERF_LOG_COUNT");
+  const currencies = ["ARS", "USD", "EUR", "BRL"];
+
+  for (let index = accounts.length; index < accountCount; index++) {
+    accounts.push({
+      id: index + 1,
+      currency: currencies[index % currencies.length],
+      balance: 1000000 + index,
+    });
+  }
+
+  for (let index = log.length; index < logCount; index++) {
+    const baseCurrency = currencies[index % currencies.length];
+    const counterCurrency = currencies[(index + 1) % currencies.length];
+    log.push({
+      id: `perf-log-${index + 1}`,
+      ts: new Date(1739145600000 + index * 1000).toISOString(),
+      ok: true,
+      request: {
+        baseCurrency,
+        counterCurrency,
+        baseAmount: 100 + (index % 1000),
+        baseAccountId: index * 2 + 1,
+        counterAccountId: index * 2 + 2,
+      },
+      exchangeRate: 1.25,
+      counterAmount: (100 + (index % 1000)) * 1.25,
+      obs: null,
+    });
+  }
+}
+
+function parsePerformanceCount(name) {
+  const value = Number.parseInt(process.env[name] || "0", 10);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 export function getAccounts() {
