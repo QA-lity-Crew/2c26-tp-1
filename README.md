@@ -1,3 +1,86 @@
+# TP1: Auditoría Arquitectónica y Tácticas de Calidad - arVault
+
+**Materia:** Arquitectura del Software (75.73 / TB034)  
+**Facultad:** Facultad de Ingeniería de la Universidad de Buenos Aires (FIUBA)  
+**Cuatrimestre:** 2do Cuatrimestre de 2026  
+**Grupo:** QA-lity Crew  
+
+### Integrantes
+| Apellido y Nombres | Padrón | Email |
+|---|---|---|
+| Giménez, Tomás | 110166 | togimenez@fi.uba.ar |
+| Corn, Franco | 109025 | fcorn@fi.uba.ar |
+| Ruiz Sugliani, Santiago Nahuel | 106768 | sruizs@fi.uba.ar |
+| Zajic, Gisela Daiana | 108735 | gzajic@fi.uba.ar |
+
+---
+
+## 📄 Informe Final
+El informe completo de evaluación de arquitectura, pruebas de carga y tácticas implementadas se encuentra disponible en formato PDF en:  
+👉 [**doc/Informe TP1 - Arquitectura de Software.pdf**](./doc/Informe%20TP1%20-%20Arquitectura%20de%20Software.pdf)
+
+---
+
+## 📌 Resumen de Tácticas Arquitectónicas Implementadas
+
+1. **Atomicidad y Control de Concurrencia (Mutex Locks en Memoria):**
+   - Resolución de *race conditions* y saldos negativos bajo ráfagas concurrentes en `POST /exchange`.
+2. **Rate Limiting Perimetral (Nginx `limit_req`):**
+   - Protección contra ráfagas no deseadas y mitigación de ataques DoS, retornando HTTP 429 estandarizado.
+3. **Escalamiento Horizontal y Persistencia Distribuida (Redis + Lua Scripts):**
+   - Externalización de estado y reserva atómica de fondos (`reserveFunds.lua`) permitiendo escalar el servicio web a 3 réplicas sin divergencia de datos.
+4. **Validación Estricta y Seguridad de Contratos (`expectedRate`):**
+   - Prevención de desincronización por *slippage* en tasas de cambio y restricción de conexiones TCP perimetrales.
+5. **Métricas de Negocio en Tiempo Real (StatsD + Graphite + Grafana):**
+   - Monitoreo en vivo de *Gross Traded Volume* (GTV) y *Net Vault Position* por divisa (ARS, USD, EUR, BRL).
+
+---
+
+## 🚀 Guía de Ejecución y Pruebas
+
+### 1. Requisitos previos
+- Docker & Docker Compose
+- Node.js (v18+)
+
+### 2. Levantar el stack completo
+Para iniciar todos los servicios (Nginx, API de arVault, StatsD/Graphite, cAdvisor y Grafana):
+
+```sh
+docker-compose up -d --build
+```
+
+- **API a través del Reverse Proxy:** `http://localhost:8080`
+- **Dashboard de Grafana:** `http://localhost:3000` (Credenciales por defecto: `admin` / `admin`)
+
+### 3. Pruebas de Carga y Rendimiento (Artillery)
+Los escenarios de prueba se encuentran en el directorio `perf/`. Para ejecutarlos:
+
+```sh
+./run-scenario.sh <nombre_del_escenario> <entorno>
+```
+
+*Ejemplo:*
+```sh
+./run-scenario.sh exchange-all-tactics-load local
+```
+
+---
+
+## 📂 Estructura del Repositorio
+
+```text
+├── app/                     # Código fuente de la API arVault (Node.js/Express)
+├── doc/                     # Informe final en PDF y colección de Postman
+├── perf/                    # Escenarios de Artillery y configuración de Grafana
+├── nginx_reverse_proxy.conf # Configuración perimetral de Nginx y Rate Limiting
+├── docker-compose.yml       # Orquestación de contenedores y límites de recursos
+└── README.md                # Este archivo
+```
+
+---
+
+# Enunciado Original de la Cátedra
+
 # Trabajo Práctico 1 de Arquitectura del Software (75.73/TB034) del 2do cuatrimestre de 2026
 
 > **La fecha de entrega para el informe y el código es el jueves 01/10** :bangbang:
@@ -47,7 +130,7 @@ El informe debe estar correctamente redactado, asumiendo que quienes vayan a lee
 El fundador de arVault tiene un par de pedidos adicionales al análisis:
 
 1. **[OBLIGATORIO]** Enterado de que se van a utilizar métricas para analizar el servicio, solicita que se agreguen métricas que muestren el **volumen** operado en cada moneda (compras y ventas sumadas por moneda), como así también el **neto** (compras suman y ventas restan), ambos a medida que transcurre el tiempo. Estas métricas deberían aparecer en el dashboard de alguno de los casos estudiados.
-2. **[OPCIONAL]** Más allá de las tácticas que prueben para favorecer distintos QA, él les comenta que, según le parece, el servicio funcionaría mejor si la información que se almacena actualmente en archivos `.json` fuera almacenada en un base de datos externa (propone usar [Redis](https://redis.io/es/), pero pueden utilizar cualquier otro motor que prefieran). No sabe a cuáles QA impactaría (recién está leyendo sobre el tema), pero está dispuesto a dar un bonus para que este cambio forme parte del análisis e implementación y se discutan en el informe los pros y contras. Este pedido es **opcional** en esta entrega, recomendamos hacerlo si ven que el resto del TP está hecho de manera coEn los atributos mensurables, obtener métricas y mostrar evidencia que permita constatar que las modificaciones impactaron positivamente. Para los demás atributos, presentar nsistente y balanceada. Tengan en cuenta que en el TP 2 va a aparecer de manera obligatoria. Si lo prueban ahora, ganan tiempo para el siguiente TP.
+2. **[OPCIONAL]** Más allá de las tácticas que prueben para favorecer distintos QA, él les comenta que, según le parece, el servicio funcionaría mejor si la información que se almacena actualmente en archivos `.json` fuera almacenada en un base de datos externa (propone usar [Redis](https://redis.io/es/), pero pueden utilizar cualquier otro motor que prefieran). No sabe a cuáles QA impactaría (recién está leyendo sobre el tema), pero está dispuesto a dar un bonus para que este cambio forme parte del análisis e implementación y se discutan en el informe los pros y contras. Este pedido es **opcional** en esta entrega, recomendamos hacerlo si ven que el resto del TP está hecho de manera consistente y balanceada. Tengan en cuenta que en el TP 2 va a aparecer de manera obligatoria. Si lo prueban ahora, ganan tiempo para el siguiente TP.
 
 ## Desarrollo
 
