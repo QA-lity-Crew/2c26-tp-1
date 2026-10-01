@@ -1,0 +1,163 @@
+{
+  "uid": "read-load-3k",
+  "title": "Prueba de lectura - caso inicial - 3000 rps",
+  "tags": [
+    "evidencia",
+    "artillery",
+    "lectura"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 40,
+  "version": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Requests HTTP 200 por segundo",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "graphite",
+        "uid": "bfy9vexbv8t1ce"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "pointSize": 5,
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": ""
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "target": "alias(scale(stats.gauges.artillery-api.codes.200,0.1),'HTTP 200/s')",
+          "datasource": {
+            "type": "graphite",
+            "uid": "bfy9vexbv8t1ce"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Latencia observada por Artillery",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "datasource": {
+        "type": "graphite",
+        "uid": "bfy9vexbv8t1ce"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "always",
+            "pointSize": 5,
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "axisLabel": ""
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "target": "alias(stats.gauges.artillery-api.latency.median,'mediana')",
+          "datasource": {
+            "type": "graphite",
+            "uid": "bfy9vexbv8t1ce"
+          }
+        },
+        {
+          "refId": "B",
+          "target": "alias(stats.gauges.artillery-api.latency.p95,'p95')",
+          "datasource": {
+            "type": "graphite",
+            "uid": "bfy9vexbv8t1ce"
+          }
+        },
+        {
+          "refId": "C",
+          "target": "alias(stats.gauges.artillery-api.latency.p99,'p99')",
+          "datasource": {
+            "type": "graphite",
+            "uid": "bfy9vexbv8t1ce"
+          }
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}
