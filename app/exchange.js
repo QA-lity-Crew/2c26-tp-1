@@ -48,6 +48,40 @@ export function setRate(rateRequest) {
   rates[counterCurrency][baseCurrency] = Number((1 / rate).toFixed(5));
 }
 
+// Simple Mutex queue mechanism for concurrency control per account
+const accountLocks = new Map();
+
+async function acquireLock(key) {
+  while (accountLocks.get(key)) {
+    await accountLocks.get(key);
+  }
+  let resolver;
+  const promise = new Promise((resolve) => {
+    resolver = resolve;
+  });
+  accountLocks.set(key, promise);
+  return resolver;
+}
+
+// Helper to acquire locks on multiple keys sequentially to avoid deadlocks
+async function acquireLocks(keys) {
+  // Sort keys deterministically to prevent deadlock conditions
+  const sortedKeys = Array.from(new Set(keys)).sort();
+  const releases = [];
+  for (const key of sortedKeys) {
+    const release = await acquireLock(key);
+    releases.push(release);
+  }
+  return () => {
+    for (let i = releases.length - 1; i >= 0; i--) {
+      releases[i]();
+    }
+    for (const key of sortedKeys) {
+      accountLocks.delete(key);
+    }
+  };
+}
+
 //executes an exchange operation
 export async function exchange(exchangeRequest) {
   const {
@@ -58,61 +92,74 @@ export async function exchange(exchangeRequest) {
     baseAmount,
   } = exchangeRequest;
 
-  //get the exchange rate
-  const exchangeRate = rates[baseCurrency][counterCurrency];
-  //compute the requested (counter) amount
-  const counterAmount = baseAmount * exchangeRate;
-  //find our account on the provided (base) currency
-  const baseAccount = findAccountByCurrency(baseCurrency);
-  //find our account on the counter currency
-  const counterAccount = findAccountByCurrency(counterCurrency);
+  // Acquire locks on involved account IDs to guarantee atomicity and prevent race conditions
+  const releaseLock = await acquireLocks([
+    String(clientBaseAccountId),
+    String(clientCounterAccountId),
+    String(baseCurrency),
+    String(counterCurrency),
+  ]);
 
-  //construct the result object with defaults
-  const exchangeResult = {
-    id: nanoid(),
-    ts: new Date(),
-    ok: false,
-    request: exchangeRequest,
-    exchangeRate: exchangeRate,
-    counterAmount: 0.0,
-    obs: null,
-  };
+  try {
+    //get the exchange rate
+    const exchangeRate = rates[baseCurrency][counterCurrency];
+    //compute the requested (counter) amount
+    const counterAmount = baseAmount * exchangeRate;
+    //find our account on the provided (base) currency
+    const baseAccount = findAccountByCurrency(baseCurrency);
+    //find our account on the counter currency
+    const counterAccount = findAccountByCurrency(counterCurrency);
 
-  //check if we have funds on the counter currency account
-  if (counterAccount.balance >= counterAmount) {
-    //try to transfer from clients' base account
-    if (await transfer(clientBaseAccountId, baseAccount.id, baseAmount)) {
-      //try to transfer to clients' counter account
-      if (
-        await transfer(counterAccount.id, clientCounterAccountId, counterAmount)
-      ) {
-        //all good, update balances
-        baseAccount.balance += baseAmount;
-        counterAccount.balance -= counterAmount;
-        exchangeResult.ok = true;
-        exchangeResult.counterAmount = counterAmount;
+    //construct the result object with defaults
+    const exchangeResult = {
+      id: nanoid(),
+      ts: new Date(),
+      ok: false,
+      request: exchangeRequest,
+      exchangeRate: exchangeRate,
+      counterAmount: 0.0,
+      obs: null,
+    };
+
+    //check if we have funds on the counter currency account
+    if (counterAccount.balance >= counterAmount) {
+      //try to transfer from clients' base account
+      if (await transfer(clientBaseAccountId, baseAccount.id, baseAmount)) {
+        //try to transfer to clients' counter account
+        if (
+          await transfer(counterAccount.id, clientCounterAccountId, counterAmount)
+        ) {
+          //all good, update balances atomically under lock protection
+          baseAccount.balance += baseAmount;
+          counterAccount.balance -= counterAmount;
+          exchangeResult.ok = true;
+          exchangeResult.counterAmount = counterAmount;
+        } else {
+          //could not transfer to clients' counter account, return base amount to client
+          await transfer(baseAccount.id, clientBaseAccountId, baseAmount);
+          exchangeResult.obs = "Could not transfer to clients' account";
+        }
       } else {
-        //could not transfer to clients' counter account, return base amount to client
-        await transfer(baseAccount.id, clientBaseAccountId, baseAmount);
-        exchangeResult.obs = "Could not transfer to clients' account";
+        //could not withdraw from clients' account
+        exchangeResult.obs = "Could not withdraw from clients' account";
       }
     } else {
-      //could not withdraw from clients' account
-      exchangeResult.obs = "Could not withdraw from clients' account";
+      //not enough funds on internal counter account
+      exchangeResult.obs = "Not enough funds on counter currency account";
     }
-  } else {
-    //not enough funds on internal counter account
-    exchangeResult.obs = "Not enough funds on counter currency account";
+
+    //log the transaction and return it
+    log.push(exchangeResult);
+
+    if (exchangeResult.ok) {
+      emitExchangeMetrics(exchangeResult);
+    }
+
+    return exchangeResult;
+  } finally {
+    // Release locks in all execution paths (success or error)
+    releaseLock();
   }
-
-  //log the transaction and return it
-  log.push(exchangeResult);
-
-  if (exchangeResult.ok) {
-    emitExchangeMetrics(exchangeResult);
-  }
-
-  return exchangeResult;
 }
 
 // internal - call transfer service to execute transfer between accounts
